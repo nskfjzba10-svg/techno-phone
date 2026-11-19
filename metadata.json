@@ -1,0 +1,8 @@
+{
+  "name": "تكنو فون — Techno Phone",
+  "description": "منصة تكنو فون لبيع أحدث الأجهزة الذكية وخدمات الصيانة المعتمدة بقطع غيار أصلية وتتبع فوري لحالة الإصلاح.",
+  "requestFramePermissions": [],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}

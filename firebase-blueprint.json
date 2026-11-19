@@ -1,0 +1,842 @@
+{
+  "entities": {
+    "UserPublic": {
+      "title": "UserPublic",
+      "description": "Public non-PII user profile storing display name, immutable role, and region.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 2,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "name": {
+          "type": "string",
+          "minLength": 2,
+          "maxLength": 120
+        },
+        "role": {
+          "type": "string",
+          "enum": ["customer", "store_owner"]
+        },
+        "storeId": {
+          "type": "string",
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "governorate": {
+          "type": "string",
+          "maxLength": 64
+        },
+        "district": {
+          "type": "string",
+          "maxLength": 64
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": ["id", "name", "role", "createdAt"]
+    },
+    "UserPrivate": {
+      "title": "UserPrivate",
+      "description": "Private PII sub-document strictly restricted to the owning user.",
+      "type": "object",
+      "properties": {
+        "email": {
+          "type": "string",
+          "maxLength": 160
+        },
+        "phone": {
+          "type": "string",
+          "maxLength": 32
+        },
+        "address": {
+          "type": "string",
+          "maxLength": 300
+        },
+        "lat": {
+          "type": "number"
+        },
+        "lng": {
+          "type": "number"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": ["email", "updatedAt"]
+    },
+    "StoreProfile": {
+      "title": "StoreProfile",
+      "description": "Registered Iraqi mobile store and repair center profile.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 2,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "ownerId": {
+          "type": "string",
+          "minLength": 2,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "name": {
+          "type": "string",
+          "minLength": 2,
+          "maxLength": 160
+        },
+        "logo": {
+          "type": "string",
+          "maxLength": 1000
+        },
+        "city": {
+          "type": "string",
+          "minLength": 2,
+          "maxLength": 64
+        },
+        "district": {
+          "type": "string",
+          "maxLength": 64
+        },
+        "address": {
+          "type": "string",
+          "minLength": 2,
+          "maxLength": 300
+        },
+        "phone": {
+          "type": "string",
+          "minLength": 6,
+          "maxLength": 32
+        },
+        "workingHours": {
+          "type": "string",
+          "maxLength": 120
+        },
+        "description": {
+          "type": "string",
+          "maxLength": 1000
+        },
+        "specialties": {
+          "type": "array"
+        },
+        "lat": {
+          "type": "number"
+        },
+        "lng": {
+          "type": "number"
+        },
+        "verified": {
+          "type": "boolean"
+        },
+        "verificationStatus": {
+          "type": "string",
+          "enum": ["unverified", "pending", "verified"]
+        },
+        "licenseDocUrl": {
+          "type": "string",
+          "maxLength": 1000
+        },
+        "avgRating": {
+          "type": "number"
+        },
+        "reviewCount": {
+          "type": "number"
+        },
+        "technicians": {
+          "type": "array"
+        },
+        "promoCodes": {
+          "type": "array"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "ownerId",
+        "name",
+        "logo",
+        "city",
+        "address",
+        "phone",
+        "lat",
+        "lng",
+        "verified",
+        "verificationStatus",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "Product": {
+      "title": "Product",
+      "description": "Smart device or accessory listed by a registered store.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 2,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "storeId": {
+          "type": "string",
+          "minLength": 2,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "ownerId": {
+          "type": "string",
+          "minLength": 2,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "storeName": {
+          "type": "string",
+          "maxLength": 160
+        },
+        "name": {
+          "type": "string",
+          "minLength": 2,
+          "maxLength": 200
+        },
+        "brand": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 80
+        },
+        "category": {
+          "type": "string",
+          "enum": ["smartphones", "laptops_tablets", "audio_watches", "accessories"]
+        },
+        "categoryLabel": {
+          "type": "string",
+          "maxLength": 80
+        },
+        "price": {
+          "type": "number"
+        },
+        "oldPrice": {
+          "type": "number"
+        },
+        "condition": {
+          "type": "string",
+          "enum": ["جديد", "مستعمل", "مجدد معتمد"]
+        },
+        "inStock": {
+          "type": "boolean"
+        },
+        "warrantyMonths": {
+          "type": "number"
+        },
+        "image": {
+          "type": "string",
+          "maxLength": 1000
+        },
+        "extraImages": {
+          "type": "array"
+        },
+        "imei": {
+          "type": "string",
+          "maxLength": 32
+        },
+        "batteryHealth": {
+          "type": "number"
+        },
+        "previouslyOpened": {
+          "type": "boolean"
+        },
+        "summary": {
+          "type": "string",
+          "maxLength": 1000
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "storeId",
+        "ownerId",
+        "storeName",
+        "name",
+        "brand",
+        "category",
+        "price",
+        "condition",
+        "inStock",
+        "warrantyMonths",
+        "image",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "Booking": {
+      "title": "Booking",
+      "description": "Purchase order, product reservation, or repair service ticket.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 2,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "kind": {
+          "type": "string",
+          "enum": ["repair", "order", "reservation"]
+        },
+        "storeId": {
+          "type": "string",
+          "minLength": 2,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "storeOwnerId": {
+          "type": "string",
+          "minLength": 2,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "storeName": {
+          "type": "string",
+          "maxLength": 160
+        },
+        "customerId": {
+          "type": "string",
+          "minLength": 2,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "customerName": {
+          "type": "string",
+          "minLength": 2,
+          "maxLength": 120
+        },
+        "phone": {
+          "type": "string",
+          "minLength": 6,
+          "maxLength": 32
+        },
+        "governorate": {
+          "type": "string",
+          "maxLength": 64
+        },
+        "district": {
+          "type": "string",
+          "maxLength": 64
+        },
+        "title": {
+          "type": "string",
+          "maxLength": 240
+        },
+        "subtitle": {
+          "type": "string",
+          "maxLength": 320
+        },
+        "stage": {
+          "type": "number"
+        },
+        "stageLabels": {
+          "type": "array"
+        },
+        "estimatedReady": {
+          "type": "string",
+          "maxLength": 160
+        },
+        "totalPrice": {
+          "type": "number"
+        },
+        "deliveryFee": {
+          "type": "number"
+        },
+        "discountAmount": {
+          "type": "number"
+        },
+        "promoCode": {
+          "type": "string",
+          "maxLength": 40
+        },
+        "notes": {
+          "type": "string",
+          "maxLength": 1200
+        },
+        "warrantyLabel": {
+          "type": "string",
+          "maxLength": 160
+        },
+        "assignedTechnician": {
+          "type": "string",
+          "maxLength": 120
+        },
+        "technicianReport": {
+          "type": "string",
+          "maxLength": 1000
+        },
+        "faultMediaUrls": {
+          "type": "array"
+        },
+        "warrantyQrCodeData": {
+          "type": "string",
+          "maxLength": 600
+        },
+        "reviewed": {
+          "type": "boolean"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "kind",
+        "storeId",
+        "storeOwnerId",
+        "storeName",
+        "customerId",
+        "customerName",
+        "phone",
+        "title",
+        "stage",
+        "stageLabels",
+        "totalPrice",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "Review": {
+      "title": "Review",
+      "description": "Verified review linked strictly to a completed booking (stage 4).",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 2,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "storeId": {
+          "type": "string",
+          "minLength": 2,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "bookingId": {
+          "type": "string",
+          "minLength": 2,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "productId": {
+          "type": "string",
+          "maxLength": 128
+        },
+        "customerId": {
+          "type": "string",
+          "minLength": 2,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "customerName": {
+          "type": "string",
+          "minLength": 2,
+          "maxLength": 120
+        },
+        "rating": {
+          "type": "number"
+        },
+        "comment": {
+          "type": "string",
+          "minLength": 3,
+          "maxLength": 800
+        },
+        "verifiedPurchase": {
+          "type": "boolean"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "storeId",
+        "bookingId",
+        "customerId",
+        "customerName",
+        "rating",
+        "comment",
+        "verifiedPurchase",
+        "createdAt"
+      ]
+    },
+    "ConversationThread": {
+      "title": "ConversationThread",
+      "description": "Parent chat thread linking a customer and a store.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 2,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "storeId": {
+          "type": "string",
+          "minLength": 2,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "storeOwnerId": {
+          "type": "string",
+          "minLength": 2,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "customerId": {
+          "type": "string",
+          "minLength": 2,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "customerName": {
+          "type": "string",
+          "maxLength": 120
+        },
+        "lastMessageAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "storeId",
+        "storeOwnerId",
+        "customerId",
+        "customerName",
+        "lastMessageAt",
+        "createdAt"
+      ]
+    },
+    "ChatMessage": {
+      "title": "ChatMessage",
+      "description": "Single chat message inside a conversation subcollection.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 2,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "storeId": {
+          "type": "string",
+          "minLength": 2,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "customerId": {
+          "type": "string",
+          "minLength": 2,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "storeOwnerId": {
+          "type": "string",
+          "minLength": 2,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "senderId": {
+          "type": "string",
+          "minLength": 2,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "senderRole": {
+          "type": "string",
+          "enum": ["customer", "store_owner"]
+        },
+        "text": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 1200
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": ["id", "storeId", "customerId", "storeOwnerId", "senderId", "senderRole", "text", "createdAt"]
+    },
+    "WishlistItem": {
+      "title": "WishlistItem",
+      "description": "Customer saved favorite device for price-drop alerts.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 2,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "customerId": {
+          "type": "string",
+          "minLength": 2,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "productId": {
+          "type": "string",
+          "minLength": 2,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "storeId": {
+          "type": "string",
+          "minLength": 2,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "savedPrice": {
+          "type": "number"
+        },
+        "notifyPriceDrop": {
+          "type": "boolean"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": ["id", "customerId", "productId", "storeId", "savedPrice", "notifyPriceDrop", "createdAt"]
+    },
+    "NotificationItem": {
+      "title": "NotificationItem",
+      "description": "User notification feed for booking progress, replies, or price drops.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 2,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "userId": {
+          "type": "string",
+          "minLength": 2,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "senderId": {
+          "type": "string",
+          "minLength": 2,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "title": {
+          "type": "string",
+          "maxLength": 160
+        },
+        "body": {
+          "type": "string",
+          "maxLength": 500
+        },
+        "type": {
+          "type": "string",
+          "enum": ["stage_update", "store_reply", "price_drop", "tradein_quote"]
+        },
+        "relatedId": {
+          "type": "string",
+          "maxLength": 128
+        },
+        "read": {
+          "type": "boolean"
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": ["id", "userId", "senderId", "title", "body", "type", "read", "createdAt", "updatedAt"]
+    },
+    "TradeInRequest": {
+      "title": "TradeInRequest",
+      "description": "Customer trade-in valuation and exchange request with a specific store.",
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "minLength": 2,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "storeId": {
+          "type": "string",
+          "minLength": 2,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "storeOwnerId": {
+          "type": "string",
+          "minLength": 2,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "customerId": {
+          "type": "string",
+          "minLength": 2,
+          "maxLength": 128,
+          "pattern": "^[a-zA-Z0-9_\\-]+$"
+        },
+        "customerName": {
+          "type": "string",
+          "maxLength": 120
+        },
+        "phone": {
+          "type": "string",
+          "maxLength": 32
+        },
+        "model": {
+          "type": "string",
+          "maxLength": 140
+        },
+        "storage": {
+          "type": "string",
+          "maxLength": 64
+        },
+        "batteryHealth": {
+          "type": "number"
+        },
+        "conditionNotes": {
+          "type": "string",
+          "maxLength": 600
+        },
+        "imei": {
+          "type": "string",
+          "maxLength": 32
+        },
+        "photoUrl": {
+          "type": "string",
+          "maxLength": 1000
+        },
+        "estimatedValue": {
+          "type": "number"
+        },
+        "offeredValue": {
+          "type": "number"
+        },
+        "targetProductId": {
+          "type": "string",
+          "maxLength": 128
+        },
+        "status": {
+          "type": "string",
+          "enum": ["pending", "quoted", "accepted", "rejected"]
+        },
+        "storeNotes": {
+          "type": "string",
+          "maxLength": 600
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "storeId",
+        "storeOwnerId",
+        "customerId",
+        "customerName",
+        "phone",
+        "model",
+        "batteryHealth",
+        "estimatedValue",
+        "status",
+        "createdAt",
+        "updatedAt"
+      ]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": { "$ref": "#/entities/UserPublic" },
+      "description": "Public user profile and immutable role metadata."
+    },
+    "/users/{userId}/private/info": {
+      "schema": { "$ref": "#/entities/UserPrivate" },
+      "description": "Owner-only private contact PII (email, phone, address, GPS coordinates)."
+    },
+    "/stores/{storeId}": {
+      "schema": { "$ref": "#/entities/StoreProfile" },
+      "description": "Iraqi electronics and repair stores directory."
+    },
+    "/products/{productId}": {
+      "schema": { "$ref": "#/entities/Product" },
+      "description": "New, used, refurbished devices and accessories listed by stores."
+    },
+    "/bookings/{bookingId}": {
+      "schema": { "$ref": "#/entities/Booking" },
+      "description": "Orders, reservations, and repair tickets."
+    },
+    "/reviews/{reviewId}": {
+      "schema": { "$ref": "#/entities/Review" },
+      "description": "Verified reviews permitted only after completed bookings."
+    },
+    "/conversations/{threadId}": {
+      "schema": { "$ref": "#/entities/ConversationThread" },
+      "description": "Customer-store direct chat thread metadata."
+    },
+    "/conversations/{threadId}/messages/{messageId}": {
+      "schema": { "$ref": "#/entities/ChatMessage" },
+      "description": "Individual messages inside a conversation thread."
+    },
+    "/wishlists/{wishlistId}": {
+      "schema": { "$ref": "#/entities/WishlistItem" },
+      "description": "Customer wishlist items with price-drop tracking."
+    },
+    "/notifications/{notificationId}": {
+      "schema": { "$ref": "#/entities/NotificationItem" },
+      "description": "User notification feed for booking progress, replies, and price drops."
+    },
+    "/tradeins/{tradeinId}": {
+      "schema": { "$ref": "#/entities/TradeInRequest" },
+      "description": "Old device trade-in valuation requests."
+    }
+  }
+}

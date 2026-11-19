@@ -1,0 +1,603 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Pillar 1: Global Default-Deny Safety Net
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // ── Global Primitives ─────────────────────────────────────────────────────
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isSignedIn() {
+      return request.auth != null && request.auth.token.email_verified == true;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() >= 2 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function isOwner(uid) {
+      return isSignedIn() && request.auth.uid == uid;
+    }
+
+    // ── Entity Validation Blueprints (Anti-Update-Gap) ────────────────────────
+    function isValidUserPublic(data) {
+      return data.keys().hasAll(['id', 'name', 'role', 'createdAt']) &&
+        data.keys().hasOnly(['id', 'name', 'role', 'storeId', 'governorate', 'district', 'createdAt']) &&
+        isValidId(data.id) &&
+        data.id == request.auth.uid &&
+        data.name is string && data.name.size() >= 2 && data.name.size() <= 120 &&
+        data.role in ['customer', 'store_owner'] &&
+        (!('storeId' in data) || isValidId(data.storeId)) &&
+        (!('governorate' in data) || (data.governorate is string && data.governorate.size() <= 64)) &&
+        (!('district' in data) || (data.district is string && data.district.size() <= 64)) &&
+        data.createdAt is timestamp;
+    }
+
+    function isValidUserPrivate(data) {
+      return data.keys().hasAll(['email', 'updatedAt']) &&
+        data.keys().hasOnly(['email', 'phone', 'address', 'lat', 'lng', 'updatedAt']) &&
+        data.email is string && data.email.size() >= 3 && data.email.size() <= 160 &&
+        (!('phone' in data) || (data.phone is string && data.phone.size() <= 32)) &&
+        (!('address' in data) || (data.address is string && data.address.size() <= 300)) &&
+        (!('lat' in data) || data.lat is number) &&
+        (!('lng' in data) || data.lng is number) &&
+        data.updatedAt is timestamp;
+    }
+
+    function isValidStore(data) {
+      return data.keys().hasAll([
+          'id', 'ownerId', 'name', 'logo', 'city', 'address', 'phone',
+          'lat', 'lng', 'verified', 'verificationStatus', 'createdAt', 'updatedAt'
+        ]) &&
+        data.keys().hasOnly([
+          'id', 'ownerId', 'name', 'logo', 'city', 'district', 'address', 'phone',
+          'workingHours', 'description', 'specialties', 'lat', 'lng',
+          'verified', 'verificationStatus', 'licenseDocUrl', 'avgRating', 'reviewCount',
+          'technicians', 'promoCodes', 'createdAt', 'updatedAt'
+        ]) &&
+        isValidId(data.id) &&
+        isValidId(data.ownerId) &&
+        data.ownerId == request.auth.uid &&
+        data.name is string && data.name.size() >= 2 && data.name.size() <= 160 &&
+        data.logo is string && data.logo.size() <= 1000 &&
+        data.city is string && data.city.size() >= 2 && data.city.size() <= 64 &&
+        (!('district' in data) || (data.district is string && data.district.size() <= 64)) &&
+        data.address is string && data.address.size() >= 2 && data.address.size() <= 300 &&
+        data.phone is string && data.phone.size() >= 6 && data.phone.size() <= 32 &&
+        (!('workingHours' in data) || (data.workingHours is string && data.workingHours.size() <= 120)) &&
+        (!('description' in data) || (data.description is string && data.description.size() <= 1000)) &&
+        (!('specialties' in data) || (data.specialties is list && data.specialties.size() <= 15 && (data.specialties.size() == 0 || data.specialties[0] is string))) &&
+        data.lat is number &&
+        data.lng is number &&
+        data.verified is bool &&
+        data.verificationStatus in ['unverified', 'pending', 'verified'] &&
+        (!('licenseDocUrl' in data) || (data.licenseDocUrl is string && data.licenseDocUrl.size() <= 1000)) &&
+        (!('avgRating' in data) || (data.avgRating is number && data.avgRating >= 0 && data.avgRating <= 5)) &&
+        (!('reviewCount' in data) || (data.reviewCount is number && data.reviewCount >= 0)) &&
+        (!('technicians' in data) || (data.technicians is list && data.technicians.size() <= 20 && (data.technicians.size() == 0 || data.technicians[0] is map))) &&
+        (!('promoCodes' in data) || (data.promoCodes is list && data.promoCodes.size() <= 20 && (data.promoCodes.size() == 0 || data.promoCodes[0] is map))) &&
+        data.createdAt is timestamp &&
+        data.updatedAt is timestamp;
+    }
+
+    function isValidProduct(data) {
+      return data.keys().hasAll([
+          'id', 'storeId', 'ownerId', 'storeName', 'name', 'brand', 'category',
+          'price', 'condition', 'inStock', 'warrantyMonths', 'image', 'createdAt', 'updatedAt'
+        ]) &&
+        data.keys().hasOnly([
+          'id', 'storeId', 'ownerId', 'storeName', 'name', 'brand', 'category',
+          'categoryLabel', 'price', 'oldPrice', 'condition', 'inStock',
+          'warrantyMonths', 'image', 'extraImages', 'imei', 'batteryHealth',
+          'previouslyOpened', 'summary', 'createdAt', 'updatedAt'
+        ]) &&
+        isValidId(data.id) &&
+        isValidId(data.storeId) &&
+        isValidId(data.ownerId) &&
+        data.ownerId == request.auth.uid &&
+        data.storeName is string && data.storeName.size() >= 2 && data.storeName.size() <= 160 &&
+        data.name is string && data.name.size() >= 2 && data.name.size() <= 200 &&
+        data.brand is string && data.brand.size() >= 1 && data.brand.size() <= 80 &&
+        data.category in ['smartphones', 'laptops_tablets', 'audio_watches', 'accessories'] &&
+        (!('categoryLabel' in data) || (data.categoryLabel is string && data.categoryLabel.size() <= 80)) &&
+        data.price is number && data.price > 0 &&
+        (!('oldPrice' in data) || (data.oldPrice is number && data.oldPrice >= data.price)) &&
+        data.condition in ['جديد', 'مستعمل', 'مجدد معتمد'] &&
+        data.inStock is bool &&
+        data.warrantyMonths is number && data.warrantyMonths >= 0 && data.warrantyMonths <= 60 &&
+        data.image is string && data.image.size() <= 1000 &&
+        (!('extraImages' in data) || (data.extraImages is list && data.extraImages.size() <= 6 && (data.extraImages.size() == 0 || data.extraImages[0] is string))) &&
+        (!('imei' in data) || (data.imei is string && data.imei.size() <= 32)) &&
+        (!('batteryHealth' in data) || (data.batteryHealth is number && data.batteryHealth >= 1 && data.batteryHealth <= 100)) &&
+        (!('previouslyOpened' in data) || data.previouslyOpened is bool) &&
+        (!('summary' in data) || (data.summary is string && data.summary.size() <= 1000)) &&
+        data.createdAt is timestamp &&
+        data.updatedAt is timestamp;
+    }
+
+    function isValidBooking(data) {
+      return data.keys().hasAll([
+          'id', 'kind', 'storeId', 'storeOwnerId', 'storeName', 'customerId',
+          'customerName', 'phone', 'title', 'stage', 'stageLabels', 'totalPrice',
+          'createdAt', 'updatedAt'
+        ]) &&
+        data.keys().hasOnly([
+          'id', 'kind', 'storeId', 'storeOwnerId', 'storeName', 'customerId',
+          'customerName', 'phone', 'governorate', 'district', 'title', 'subtitle',
+          'stage', 'stageLabels', 'estimatedReady', 'totalPrice', 'deliveryFee',
+          'discountAmount', 'promoCode', 'notes', 'warrantyLabel',
+          'assignedTechnician', 'technicianReport', 'faultMediaUrls',
+          'warrantyQrCodeData', 'reviewed', 'createdAt', 'updatedAt'
+        ]) &&
+        isValidId(data.id) &&
+        data.kind in ['repair', 'order', 'reservation'] &&
+        isValidId(data.storeId) &&
+        isValidId(data.storeOwnerId) &&
+        data.storeName is string && data.storeName.size() >= 2 && data.storeName.size() <= 160 &&
+        isValidId(data.customerId) &&
+        data.customerName is string && data.customerName.size() >= 2 && data.customerName.size() <= 120 &&
+        data.phone is string && data.phone.size() >= 6 && data.phone.size() <= 32 &&
+        (!('governorate' in data) || (data.governorate is string && data.governorate.size() <= 64)) &&
+        (!('district' in data) || (data.district is string && data.district.size() <= 64)) &&
+        data.title is string && data.title.size() >= 2 && data.title.size() <= 240 &&
+        (!('subtitle' in data) || (data.subtitle is string && data.subtitle.size() <= 320)) &&
+        data.stage is number && data.stage >= 1 && data.stage <= 4 &&
+        data.stageLabels is list && data.stageLabels.size() == 4 && data.stageLabels[0] is string &&
+        (!('estimatedReady' in data) || (data.estimatedReady is string && data.estimatedReady.size() <= 160)) &&
+        data.totalPrice is number && data.totalPrice >= 0 &&
+        (!('deliveryFee' in data) || (data.deliveryFee is number && data.deliveryFee >= 0)) &&
+        (!('discountAmount' in data) || (data.discountAmount is number && data.discountAmount >= 0)) &&
+        (!('promoCode' in data) || (data.promoCode is string && data.promoCode.size() <= 40)) &&
+        (!('notes' in data) || (data.notes is string && data.notes.size() <= 1200)) &&
+        (!('warrantyLabel' in data) || (data.warrantyLabel is string && data.warrantyLabel.size() <= 160)) &&
+        (!('assignedTechnician' in data) || (data.assignedTechnician is string && data.assignedTechnician.size() <= 120)) &&
+        (!('technicianReport' in data) || (data.technicianReport is string && data.technicianReport.size() <= 1000)) &&
+        (!('faultMediaUrls' in data) || (data.faultMediaUrls is list && data.faultMediaUrls.size() <= 5 && (data.faultMediaUrls.size() == 0 || data.faultMediaUrls[0] is string))) &&
+        (!('warrantyQrCodeData' in data) || (data.warrantyQrCodeData is string && data.warrantyQrCodeData.size() <= 600)) &&
+        (!('reviewed' in data) || data.reviewed is bool) &&
+        data.createdAt is timestamp &&
+        data.updatedAt is timestamp;
+    }
+
+    function isValidReview(data) {
+      return data.keys().hasAll([
+          'id', 'storeId', 'bookingId', 'customerId', 'customerName',
+          'rating', 'comment', 'verifiedPurchase', 'createdAt'
+        ]) &&
+        data.keys().hasOnly([
+          'id', 'storeId', 'bookingId', 'productId', 'customerId',
+          'customerName', 'rating', 'comment', 'verifiedPurchase', 'createdAt'
+        ]) &&
+        isValidId(data.id) &&
+        isValidId(data.storeId) &&
+        isValidId(data.bookingId) &&
+        (!('productId' in data) || isValidId(data.productId)) &&
+        isValidId(data.customerId) &&
+        data.customerId == request.auth.uid &&
+        data.customerName is string && data.customerName.size() >= 2 && data.customerName.size() <= 120 &&
+        data.rating is number && data.rating >= 1 && data.rating <= 5 &&
+        data.comment is string && data.comment.size() >= 3 && data.comment.size() <= 800 &&
+        data.verifiedPurchase == true &&
+        data.createdAt is timestamp;
+    }
+
+    function isValidConversation(data) {
+      return data.keys().hasAll([
+          'id', 'storeId', 'storeOwnerId', 'customerId', 'customerName', 'lastMessageAt', 'createdAt'
+        ]) &&
+        data.keys().hasOnly([
+          'id', 'storeId', 'storeOwnerId', 'customerId', 'customerName', 'lastMessageAt', 'createdAt'
+        ]) &&
+        isValidId(data.id) &&
+        isValidId(data.storeId) &&
+        isValidId(data.storeOwnerId) &&
+        isValidId(data.customerId) &&
+        data.customerName is string && data.customerName.size() >= 1 && data.customerName.size() <= 120 &&
+        data.lastMessageAt is timestamp &&
+        data.createdAt is timestamp;
+    }
+
+    function isValidChatMessage(data) {
+      return data.keys().hasAll(['id', 'storeId', 'customerId', 'storeOwnerId', 'senderId', 'senderRole', 'text', 'createdAt']) &&
+        data.keys().hasOnly(['id', 'storeId', 'customerId', 'storeOwnerId', 'senderId', 'senderRole', 'text', 'createdAt']) &&
+        isValidId(data.id) &&
+        isValidId(data.storeId) &&
+        isValidId(data.customerId) &&
+        isValidId(data.storeOwnerId) &&
+        isValidId(data.senderId) &&
+        data.senderId == request.auth.uid &&
+        data.senderRole in ['customer', 'store_owner'] &&
+        data.text is string && data.text.size() >= 1 && data.text.size() <= 1200 &&
+        data.createdAt is timestamp;
+    }
+
+    function isValidWishlist(data) {
+      return data.keys().hasAll([
+          'id', 'customerId', 'productId', 'storeId', 'savedPrice', 'notifyPriceDrop', 'createdAt'
+        ]) &&
+        data.keys().hasOnly([
+          'id', 'customerId', 'productId', 'storeId', 'savedPrice', 'notifyPriceDrop', 'createdAt'
+        ]) &&
+        isValidId(data.id) &&
+        isValidId(data.customerId) &&
+        data.customerId == request.auth.uid &&
+        isValidId(data.productId) &&
+        isValidId(data.storeId) &&
+        data.savedPrice is number && data.savedPrice > 0 &&
+        data.notifyPriceDrop is bool &&
+        data.createdAt is timestamp;
+    }
+
+    function isValidNotification(data) {
+      return data.keys().hasAll(['id', 'userId', 'senderId', 'title', 'body', 'type', 'read', 'createdAt', 'updatedAt']) &&
+        data.keys().hasOnly(['id', 'userId', 'senderId', 'title', 'body', 'type', 'relatedId', 'read', 'createdAt', 'updatedAt']) &&
+        isValidId(data.id) &&
+        isValidId(data.userId) &&
+        isValidId(data.senderId) &&
+        data.senderId == request.auth.uid &&
+        data.title is string && data.title.size() >= 1 && data.title.size() <= 160 &&
+        data.body is string && data.body.size() >= 1 && data.body.size() <= 500 &&
+        data.type in ['stage_update', 'store_reply', 'price_drop', 'tradein_quote'] &&
+        (!('relatedId' in data) || isValidId(data.relatedId)) &&
+        data.read is bool &&
+        data.createdAt is timestamp &&
+        data.updatedAt is timestamp;
+    }
+
+    function isValidTradeIn(data) {
+      return data.keys().hasAll([
+          'id', 'storeId', 'storeOwnerId', 'customerId', 'customerName', 'phone',
+          'model', 'batteryHealth', 'estimatedValue', 'status', 'createdAt', 'updatedAt'
+        ]) &&
+        data.keys().hasOnly([
+          'id', 'storeId', 'storeOwnerId', 'customerId', 'customerName', 'phone',
+          'model', 'storage', 'batteryHealth', 'conditionNotes', 'imei', 'photoUrl',
+          'estimatedValue', 'offeredValue', 'targetProductId', 'status', 'storeNotes',
+          'createdAt', 'updatedAt'
+        ]) &&
+        isValidId(data.id) &&
+        isValidId(data.storeId) &&
+        isValidId(data.storeOwnerId) &&
+        isValidId(data.customerId) &&
+        data.customerName is string && data.customerName.size() >= 2 && data.customerName.size() <= 120 &&
+        data.phone is string && data.phone.size() >= 6 && data.phone.size() <= 32 &&
+        data.model is string && data.model.size() >= 2 && data.model.size() <= 140 &&
+        (!('storage' in data) || (data.storage is string && data.storage.size() <= 64)) &&
+        data.batteryHealth is number && data.batteryHealth >= 1 && data.batteryHealth <= 100 &&
+        (!('conditionNotes' in data) || (data.conditionNotes is string && data.conditionNotes.size() <= 600)) &&
+        (!('imei' in data) || (data.imei is string && data.imei.size() <= 32)) &&
+        (!('photoUrl' in data) || (data.photoUrl is string && data.photoUrl.size() <= 1000)) &&
+        data.estimatedValue is number && data.estimatedValue >= 0 &&
+        (!('offeredValue' in data) || (data.offeredValue is number && data.offeredValue >= 0)) &&
+        (!('targetProductId' in data) || isValidId(data.targetProductId)) &&
+        data.status in ['pending', 'quoted', 'accepted', 'rejected'] &&
+        (!('storeNotes' in data) || (data.storeNotes is string && data.storeNotes.size() <= 600)) &&
+        data.createdAt is timestamp &&
+        data.updatedAt is timestamp;
+    }
+
+    // ── Collection Rules ──────────────────────────────────────────────────────
+
+    // Users (Pillar 6: Non-PII public profile vs Owner-Only private PII)
+    match /users/{userId} {
+      allow get: if isValidId(userId) && isOwner(userId);
+      allow list: if false;
+      allow create: if isValidId(userId) && isOwner(userId) &&
+        isValidUserPublic(incoming()) &&
+        incoming().createdAt == request.time;
+      allow update: if isValidId(userId) && isOwner(userId) &&
+        isValidUserPublic(incoming()) &&
+        incoming().id == existing().id &&
+        incoming().role == existing().role &&
+        incoming().createdAt == existing().createdAt &&
+        incoming().diff(existing()).affectedKeys().hasOnly(['name', 'governorate', 'district', 'storeId']);
+      allow delete: if false;
+
+      match /private/{docId} {
+        allow get: if isValidId(userId) && docId == 'info' && isOwner(userId);
+        allow list: if false;
+        allow create: if isValidId(userId) && docId == 'info' && isOwner(userId) &&
+          isValidUserPrivate(incoming()) &&
+          incoming().updatedAt == request.time;
+        allow update: if isValidId(userId) && docId == 'info' && isOwner(userId) &&
+          isValidUserPrivate(incoming()) &&
+          incoming().updatedAt == request.time &&
+          incoming().diff(existing()).affectedKeys().hasOnly(['email', 'phone', 'address', 'lat', 'lng', 'updatedAt']);
+        allow delete: if false;
+      }
+    }
+
+    // Stores Directory
+    match /stores/{storeId} {
+      allow get: if isValidId(storeId) && isSignedIn() && (
+        existing().verified == true || existing().ownerId == request.auth.uid
+      );
+      allow list: if isSignedIn() && (
+        existing().verified == true || existing().ownerId == request.auth.uid
+      );
+      allow create: if isValidId(storeId) && isSignedIn() &&
+        isValidStore(incoming()) &&
+        incoming().id == storeId &&
+        incoming().verified == false &&
+        incoming().verificationStatus in ['unverified', 'pending'] &&
+        incoming().createdAt == request.time &&
+        incoming().updatedAt == request.time;
+      allow update: if isValidId(storeId) && isSignedIn() &&
+        isValidStore(incoming()) &&
+        existing().ownerId == request.auth.uid &&
+        incoming().ownerId == existing().ownerId &&
+        incoming().id == existing().id &&
+        incoming().createdAt == existing().createdAt &&
+        incoming().updatedAt == request.time && (
+          // Action 1: Update store profile, technicians, or promo codes (cannot self-verify)
+          (
+            incoming().verified == existing().verified &&
+            incoming().verificationStatus == existing().verificationStatus &&
+            incoming().diff(existing()).affectedKeys().hasOnly([
+              'name', 'logo', 'city', 'district', 'address', 'phone',
+              'workingHours', 'description', 'specialties', 'lat', 'lng',
+              'technicians', 'promoCodes', 'updatedAt'
+            ])
+          ) ||
+          // Action 2: Submit verification license document (transitions to pending only)
+          (
+            incoming().verified == false &&
+            incoming().verificationStatus == 'pending' &&
+            incoming().diff(existing()).affectedKeys().hasOnly([
+              'licenseDocUrl', 'verificationStatus', 'verified', 'updatedAt'
+            ])
+          )
+        );
+      allow delete: if false;
+    }
+
+    // Products Catalog
+    match /products/{productId} {
+      allow get: if isValidId(productId) && isSignedIn() && (
+        existing().inStock == true || existing().ownerId == request.auth.uid
+      );
+      allow list: if isSignedIn() && (
+        existing().inStock == true || existing().ownerId == request.auth.uid
+      );
+      allow create: if isValidId(productId) && isSignedIn() &&
+        isValidProduct(incoming()) &&
+        incoming().id == productId &&
+        incoming().createdAt == request.time &&
+        incoming().updatedAt == request.time &&
+        exists(/databases/$(database)/documents/stores/$(incoming().storeId)) &&
+        get(/databases/$(database)/documents/stores/$(incoming().storeId)).data.ownerId == request.auth.uid;
+      allow update: if isValidId(productId) && isSignedIn() &&
+        isValidProduct(incoming()) &&
+        existing().ownerId == request.auth.uid &&
+        incoming().ownerId == existing().ownerId &&
+        incoming().storeId == existing().storeId &&
+        incoming().id == existing().id &&
+        incoming().createdAt == existing().createdAt &&
+        incoming().updatedAt == request.time &&
+        incoming().diff(existing()).affectedKeys().hasOnly([
+          'storeName', 'name', 'brand', 'category', 'categoryLabel', 'price', 'oldPrice',
+          'condition', 'inStock', 'warrantyMonths', 'image', 'extraImages',
+          'imei', 'batteryHealth', 'previouslyOpened', 'summary', 'updatedAt'
+        ]);
+      allow delete: if isValidId(productId) && isSignedIn() &&
+        existing().ownerId == request.auth.uid;
+    }
+
+    // Bookings (Orders, Reservations, Repairs)
+    match /bookings/{bookingId} {
+      allow get: if isValidId(bookingId) && isSignedIn() && (
+        existing().customerId == request.auth.uid ||
+        existing().storeOwnerId == request.auth.uid
+      );
+      allow list: if isSignedIn() && (
+        existing().customerId == request.auth.uid ||
+        existing().storeOwnerId == request.auth.uid
+      );
+      allow create: if isValidId(bookingId) && isSignedIn() &&
+        isValidBooking(incoming()) &&
+        incoming().id == bookingId &&
+        incoming().customerId == request.auth.uid &&
+        incoming().stage == 1 &&
+        (!('reviewed' in incoming()) || incoming().reviewed == false) &&
+        incoming().createdAt == request.time &&
+        incoming().updatedAt == request.time &&
+        exists(/databases/$(database)/documents/stores/$(incoming().storeId)) &&
+        get(/databases/$(database)/documents/stores/$(incoming().storeId)).data.ownerId == incoming().storeOwnerId;
+      allow update: if isValidId(bookingId) && isSignedIn() &&
+        isValidBooking(incoming()) &&
+        incoming().id == existing().id &&
+        incoming().storeId == existing().storeId &&
+        incoming().storeOwnerId == existing().storeOwnerId &&
+        incoming().customerId == existing().customerId &&
+        incoming().createdAt == existing().createdAt &&
+        incoming().updatedAt == request.time && (
+          // Action 1: Store owner advances stage or updates technician assignment/report (locked once stage == 4)
+          (
+            existing().storeOwnerId == request.auth.uid &&
+            existing().stage < 4 &&
+            incoming().stage >= existing().stage &&
+            incoming().diff(existing()).affectedKeys().hasOnly([
+              'stage', 'notes', 'estimatedReady', 'assignedTechnician',
+              'technicianReport', 'warrantyQrCodeData', 'updatedAt'
+            ])
+          ) ||
+          // Action 2: Customer marks completed booking (stage == 4) as reviewed once
+          (
+            existing().customerId == request.auth.uid &&
+            existing().stage == 4 &&
+            (!('reviewed' in existing()) || existing().reviewed == false) &&
+            incoming().reviewed == true &&
+            incoming().stage == existing().stage &&
+            incoming().diff(existing()).affectedKeys().hasOnly(['reviewed', 'updatedAt'])
+          )
+        );
+      allow delete: if false;
+    }
+
+    // Verified Reviews (Strictly 1 review per completed stage == 4 booking)
+    match /reviews/{reviewId} {
+      allow get: if isValidId(reviewId) && isSignedIn() && existing().verifiedPurchase == true;
+      allow list: if isSignedIn() && existing().verifiedPurchase == true;
+      allow create: if isValidId(reviewId) && isSignedIn() &&
+        isValidReview(incoming()) &&
+        incoming().id == reviewId &&
+        reviewId == incoming().bookingId &&
+        incoming().createdAt == request.time &&
+        exists(/databases/$(database)/documents/bookings/$(incoming().bookingId)) &&
+        get(/databases/$(database)/documents/bookings/$(incoming().bookingId)).data.customerId == request.auth.uid &&
+        get(/databases/$(database)/documents/bookings/$(incoming().bookingId)).data.storeId == incoming().storeId &&
+        get(/databases/$(database)/documents/bookings/$(incoming().bookingId)).data.stage == 4;
+      allow update: if false;
+      allow delete: if false;
+    }
+
+    // Conversations & Subcollection Messages (Pillar 1 Master Gate + Pillar 8 zero get() in list)
+    match /conversations/{threadId} {
+      allow get: if isValidId(threadId) && isSignedIn() && (
+        existing().customerId == request.auth.uid ||
+        existing().storeOwnerId == request.auth.uid
+      );
+      allow list: if isSignedIn() && (
+        existing().customerId == request.auth.uid ||
+        existing().storeOwnerId == request.auth.uid
+      );
+      allow create: if isValidId(threadId) && isSignedIn() &&
+        isValidConversation(incoming()) &&
+        incoming().id == threadId &&
+        incoming().customerId == request.auth.uid &&
+        incoming().createdAt == request.time &&
+        incoming().lastMessageAt == request.time &&
+        exists(/databases/$(database)/documents/stores/$(incoming().storeId)) &&
+        get(/databases/$(database)/documents/stores/$(incoming().storeId)).data.ownerId == incoming().storeOwnerId;
+      allow update: if isValidId(threadId) && isSignedIn() &&
+        isValidConversation(incoming()) &&
+        (existing().customerId == request.auth.uid || existing().storeOwnerId == request.auth.uid) &&
+        incoming().id == existing().id &&
+        incoming().storeId == existing().storeId &&
+        incoming().storeOwnerId == existing().storeOwnerId &&
+        incoming().customerId == existing().customerId &&
+        incoming().createdAt == existing().createdAt &&
+        incoming().lastMessageAt == request.time &&
+        incoming().diff(existing()).affectedKeys().hasOnly(['lastMessageAt', 'customerName']);
+      allow delete: if false;
+
+      match /messages/{messageId} {
+        allow get: if isValidId(threadId) && isValidId(messageId) && isSignedIn() && (
+          get(/databases/$(database)/documents/conversations/$(threadId)).data.customerId == request.auth.uid ||
+          get(/databases/$(database)/documents/conversations/$(threadId)).data.storeOwnerId == request.auth.uid
+        );
+        allow list: if isSignedIn() && (
+          existing().customerId == request.auth.uid ||
+          existing().storeOwnerId == request.auth.uid
+        );
+        allow create: if isValidId(threadId) && isValidId(messageId) && isSignedIn() &&
+          isValidChatMessage(incoming()) &&
+          incoming().id == messageId &&
+          incoming().createdAt == request.time &&
+          exists(/databases/$(database)/documents/conversations/$(threadId)) &&
+          get(/databases/$(database)/documents/conversations/$(threadId)).data.customerId == incoming().customerId &&
+          get(/databases/$(database)/documents/conversations/$(threadId)).data.storeOwnerId == incoming().storeOwnerId && (
+            (incoming().senderRole == 'customer' && incoming().customerId == request.auth.uid) ||
+            (incoming().senderRole == 'store_owner' && incoming().storeOwnerId == request.auth.uid)
+          );
+        allow update, delete: if false;
+      }
+    }
+
+    // Customer Wishlist
+    match /wishlists/{wishlistId} {
+      allow get: if isValidId(wishlistId) && isSignedIn() && existing().customerId == request.auth.uid;
+      allow list: if isSignedIn() && existing().customerId == request.auth.uid;
+      allow create: if isValidId(wishlistId) && isSignedIn() &&
+        isValidWishlist(incoming()) &&
+        incoming().id == wishlistId &&
+        incoming().createdAt == request.time &&
+        exists(/databases/$(database)/documents/products/$(incoming().productId));
+      allow update: if isValidId(wishlistId) && isSignedIn() &&
+        isValidWishlist(incoming()) &&
+        existing().customerId == request.auth.uid &&
+        incoming().customerId == existing().customerId &&
+        incoming().productId == existing().productId &&
+        incoming().storeId == existing().storeId &&
+        incoming().createdAt == existing().createdAt &&
+        incoming().diff(existing()).affectedKeys().hasOnly(['notifyPriceDrop', 'savedPrice']);
+      allow delete: if isValidId(wishlistId) && isSignedIn() && existing().customerId == request.auth.uid;
+    }
+
+    // Notifications
+    match /notifications/{notificationId} {
+      allow get: if isValidId(notificationId) && isSignedIn() && existing().userId == request.auth.uid;
+      allow list: if isSignedIn() && existing().userId == request.auth.uid;
+      allow create: if isValidId(notificationId) && isSignedIn() &&
+        isValidNotification(incoming()) &&
+        incoming().id == notificationId &&
+        incoming().read == false &&
+        incoming().createdAt == request.time &&
+        incoming().updatedAt == request.time;
+      allow update: if isValidId(notificationId) && isSignedIn() &&
+        isValidNotification(incoming()) &&
+        existing().userId == request.auth.uid &&
+        incoming().userId == existing().userId &&
+        incoming().senderId == existing().senderId &&
+        incoming().id == existing().id &&
+        incoming().createdAt == existing().createdAt &&
+        incoming().updatedAt == request.time &&
+        incoming().diff(existing()).affectedKeys().hasOnly(['read', 'updatedAt']);
+      allow delete: if isValidId(notificationId) && isSignedIn() && existing().userId == request.auth.uid;
+    }
+
+    // Trade-In Requests
+    match /tradeins/{tradeinId} {
+      allow get: if isValidId(tradeinId) && isSignedIn() && (
+        existing().customerId == request.auth.uid ||
+        existing().storeOwnerId == request.auth.uid
+      );
+      allow list: if isSignedIn() && (
+        existing().customerId == request.auth.uid ||
+        existing().storeOwnerId == request.auth.uid
+      );
+      allow create: if isValidId(tradeinId) && isSignedIn() &&
+        isValidTradeIn(incoming()) &&
+        incoming().id == tradeinId &&
+        incoming().customerId == request.auth.uid &&
+        incoming().status == 'pending' &&
+        incoming().createdAt == request.time &&
+        incoming().updatedAt == request.time &&
+        exists(/databases/$(database)/documents/stores/$(incoming().storeId)) &&
+        get(/databases/$(database)/documents/stores/$(incoming().storeId)).data.ownerId == incoming().storeOwnerId;
+      allow update: if isValidId(tradeinId) && isSignedIn() &&
+        isValidTradeIn(incoming()) &&
+        incoming().id == existing().id &&
+        incoming().storeId == existing().storeId &&
+        incoming().storeOwnerId == existing().storeOwnerId &&
+        incoming().customerId == existing().customerId &&
+        incoming().createdAt == existing().createdAt &&
+        incoming().updatedAt == request.time &&
+        existing().status in ['pending', 'quoted'] && (
+          // Action 1: Store owner quotes or rejects the trade-in
+          (
+            existing().storeOwnerId == request.auth.uid &&
+            incoming().status in ['quoted', 'rejected'] &&
+            incoming().diff(existing()).affectedKeys().hasOnly(['offeredValue', 'status', 'storeNotes', 'updatedAt'])
+          ) ||
+          // Action 2: Customer accepts or rejects a quoted offer
+          (
+            existing().customerId == request.auth.uid &&
+            existing().status == 'quoted' &&
+            incoming().status in ['accepted', 'rejected'] &&
+            incoming().diff(existing()).affectedKeys().hasOnly(['status', 'updatedAt'])
+          )
+        );
+      allow delete: if false;
+    }
+  }
+}

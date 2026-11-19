@@ -1,0 +1,39 @@
+@import "tailwindcss";
+@custom-variant dark (&:where(.dark, .dark *));
+
+@theme {
+  --font-display: "Cairo", "IBM Plex Sans Arabic", system-ui, sans-serif;
+  --font-sans: "IBM Plex Sans Arabic", system-ui, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, monospace;
+}
+
+@layer base {
+  html {
+    font-family: var(--font-sans);
+    scroll-behavior: smooth;
+    color-scheme: light;
+  }
+
+  html.dark {
+    color-scheme: dark;
+  }
+
+  h1, h2, h3, .font-display {
+    font-family: var(--font-display);
+  }
+}
+
+.tabular-nums {
+  font-variant-numeric: tabular-nums;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
