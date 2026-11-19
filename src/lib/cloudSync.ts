@@ -4,8 +4,12 @@ import {
   signOut,
 } from 'firebase/auth';
 import {
+  collection,
+  deleteDoc,
   doc,
   getDoc,
+  getDocs,
+  onSnapshot,
   serverTimestamp,
   setDoc,
   updateDoc,
@@ -13,6 +17,7 @@ import {
 import { getCityCoordinates } from '../data/catalog';
 import {
   AuthUser,
+  Product,
   StoreProfile,
   TrackingRecord,
   TradeInRequest,
@@ -354,3 +359,170 @@ export async function syncTradeInToFirestore(
     console.warn('Firestore trade-in mirror skipped:', err);
   }
 }
+
+export async function syncProductToFirestore(product: Product): Promise<void> {
+  const prodId = sanitizeId(product.id);
+  try {
+    const prodRef = doc(db, 'products', prodId);
+    await setDoc(
+      prodRef,
+      {
+        id: prodId,
+        storeId: sanitizeId(product.storeId),
+        ownerId: sanitizeId(product.ownerId || auth.currentUser?.uid || 'merchant'),
+        storeName: product.storeName,
+        name: product.name,
+        brand: product.brand,
+        category: product.category,
+        categoryLabel: product.categoryLabel,
+        price: product.price,
+        ...(typeof product.oldPrice === 'number' ? { oldPrice: product.oldPrice } : {}),
+        condition: product.condition,
+        inStock: product.inStock,
+        warrantyMonths: product.warrantyMonths,
+        image: product.image,
+        extraImages: product.extraImages || [],
+        ...(product.imei ? { imei: product.imei } : {}),
+        ...(typeof product.batteryHealth === 'number'
+          ? { batteryHealth: product.batteryHealth }
+          : {}),
+        previouslyOpened: Boolean(product.previouslyOpened),
+        summary: product.summary,
+        specs: product.specs || [],
+        storageOptions: product.storageOptions || [],
+        colors: product.colors || [],
+        updatedAt: serverTimestamp(),
+      },
+      { merge: true }
+    );
+    console.log(`[Firestore] Synced product ${prodId} successfully`);
+  } catch (err) {
+    console.warn('[Firestore] Product sync skipped or failed:', err);
+  }
+}
+
+export async function deleteProductFromFirestore(productId: string): Promise<void> {
+  try {
+    const prodRef = doc(db, 'products', sanitizeId(productId));
+    await deleteDoc(prodRef);
+  } catch (err) {
+    console.warn('[Firestore] Delete product skipped:', err);
+  }
+}
+
+export function subscribeToLiveProducts(
+  onUpdate: (products: Product[]) => void
+): () => void {
+  try {
+    const productsRef = collection(db, 'products');
+    const unsub = onSnapshot(
+      productsRef,
+      (snapshot) => {
+        if (!snapshot.empty) {
+          const list: Product[] = [];
+          snapshot.forEach((docSnap) => {
+            const data = docSnap.data();
+            list.push({
+              id: data.id || docSnap.id,
+              storeId: data.storeId || 'store-techno-baghdad',
+              ownerId: data.ownerId,
+              storeName: data.storeName || '',
+              name: data.name || '',
+              brand: data.brand || '',
+              category: data.category || 'smartphones',
+              categoryLabel: data.categoryLabel || 'هواتف ذكية',
+              price: Number(data.price) || 0,
+              oldPrice: data.oldPrice ? Number(data.oldPrice) : undefined,
+              condition: data.condition || 'جديد',
+              inStock: data.inStock !== false,
+              warrantyMonths: Number(data.warrantyMonths) || 12,
+              image: data.image || '/src/assets/images/product_titanium_phone_1794983260872.jpg',
+              extraImages: Array.isArray(data.extraImages) ? data.extraImages : [],
+              imei: data.imei,
+              batteryHealth: data.batteryHealth,
+              previouslyOpened: data.previouslyOpened,
+              summary: data.summary || '',
+              specs: Array.isArray(data.specs) ? data.specs : [],
+              storageOptions: Array.isArray(data.storageOptions) ? data.storageOptions : [],
+              colors: Array.isArray(data.colors) ? data.colors : [],
+            });
+          });
+          onUpdate(list);
+        }
+      },
+      (error) => {
+        console.warn('[Firestore] Realtime products listener offline or restricted:', error.message);
+      }
+    );
+    return unsub;
+  } catch {
+    return () => {};
+  }
+}
+
+export async function syncStoreProfileToFirestore(store: StoreProfile): Promise<void> {
+  const storeId = sanitizeId(store.id);
+  try {
+    const storeRef = doc(db, 'stores', storeId);
+    await setDoc(
+      storeRef,
+      {
+        ...store,
+        id: storeId,
+        updatedAt: serverTimestamp(),
+      },
+      { merge: true }
+    );
+  } catch (err) {
+    console.warn('[Firestore] Store sync skipped:', err);
+  }
+}
+
+export function subscribeToLiveStores(
+  onUpdate: (stores: StoreProfile[]) => void
+): () => void {
+  try {
+    const storesRef = collection(db, 'stores');
+    const unsub = onSnapshot(
+      storesRef,
+      (snapshot) => {
+        if (!snapshot.empty) {
+          const list: StoreProfile[] = [];
+          snapshot.forEach((docSnap) => {
+            const d = docSnap.data();
+            list.push({
+              id: d.id || docSnap.id,
+              ownerId: d.ownerId || '',
+              name: d.name || '',
+              logo: d.logo || '/src/assets/images/product_titanium_phone_1794983260872.jpg',
+              city: d.city || 'بغداد',
+              district: d.district || '',
+              address: d.address || '',
+              phone: d.phone || '',
+              workingHours: d.workingHours || '',
+              description: d.description || '',
+              specialties: Array.isArray(d.specialties) ? d.specialties : [],
+              lat: Number(d.lat) || 33.3152,
+              lng: Number(d.lng) || 44.3661,
+              verified: Boolean(d.verified),
+              verificationStatus: d.verificationStatus || 'unverified',
+              avgRating: typeof d.avgRating === 'number' ? d.avgRating : 4.8,
+              reviewCount: typeof d.reviewCount === 'number' ? d.reviewCount : 0,
+              technicians: Array.isArray(d.technicians) ? d.technicians : [],
+              promoCodes: Array.isArray(d.promoCodes) ? d.promoCodes : [],
+              createdAt: typeof d.createdAt === 'string' ? d.createdAt : new Date().toISOString().slice(0, 10),
+            });
+          });
+          onUpdate(list);
+        }
+      },
+      (error) => {
+        console.warn('[Firestore] Realtime stores listener error:', error.message);
+      }
+    );
+    return unsub;
+  } catch {
+    return () => {};
+  }
+}
+

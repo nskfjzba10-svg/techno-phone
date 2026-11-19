@@ -29,6 +29,11 @@ import {
 } from '../data/catalog';
 import { apiRequest, readImageFileAsDataUrl, uploadMediaFile } from '../lib/api';
 import {
+  deleteProductFromFirestore,
+  syncProductToFirestore,
+  syncStoreProfileToFirestore,
+} from '../lib/cloudSync';
+import {
   AuthUser,
   ChatMessage,
   ConversationThread,
@@ -233,6 +238,7 @@ export const StoreOwnerPortal: React.FC<StoreOwnerPortalProps> = ({
         }
       );
       onStoreUpdated(res.store);
+      syncStoreProfileToFirestore(res.store);
       setProfileSaved(true);
       window.setTimeout(() => setProfileSaved(false), 3000);
     } catch (err) {
@@ -311,6 +317,7 @@ export const StoreOwnerPortal: React.FC<StoreOwnerPortalProps> = ({
         }
       );
       setProducts((prev) => [res.product, ...prev]);
+      syncProductToFirestore(res.product);
       onProductsChanged();
       setProdName('');
       setProdBrand('');
@@ -356,6 +363,7 @@ export const StoreOwnerPortal: React.FC<StoreOwnerPortalProps> = ({
       setProducts((prev) =>
         prev.map((p) => (p.id === prod.id ? res.product : p))
       );
+      syncProductToFirestore(res.product);
       setEditingPriceId(null);
       setPriceDraft('');
       onProductsChanged();
@@ -378,6 +386,7 @@ export const StoreOwnerPortal: React.FC<StoreOwnerPortalProps> = ({
         { method: 'DELETE' }
       );
       setProducts((prev) => prev.filter((p) => p.id !== productId));
+      deleteProductFromFirestore(productId);
       onProductsChanged();
     } catch (err) {
       setStatusError(

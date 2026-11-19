@@ -31,6 +31,8 @@ import {
 } from './lib/api';
 import {
   signOutFirebase,
+  subscribeToLiveProducts,
+  subscribeToLiveStores,
   syncBookingToFirestore,
   syncReviewToFirestore,
   syncTradeInToFirestore,
@@ -199,6 +201,36 @@ export default function App() {
     };
     boot();
   }, [loadMarketplaceData, loadCustomerExtras]);
+
+  // Live Realtime Firestore Sync: pushes new products and stores immediately to all connected users
+  useEffect(() => {
+    const unsubProducts = subscribeToLiveProducts((liveProds) => {
+      if (liveProds.length > 0) {
+        setProducts((prev) => {
+          const map = new Map<string, Product>();
+          for (const p of prev) map.set(p.id, p);
+          for (const p of liveProds) map.set(p.id, p);
+          return Array.from(map.values());
+        });
+      }
+    });
+
+    const unsubStores = subscribeToLiveStores((liveStores) => {
+      if (liveStores.length > 0) {
+        setStores((prev) => {
+          const map = new Map<string, StoreProfile>();
+          for (const s of prev) map.set(s.id, s);
+          for (const s of liveStores) map.set(s.id, s);
+          return Array.from(map.values());
+        });
+      }
+    });
+
+    return () => {
+      unsubProducts();
+      unsubStores();
+    };
+  }, []);
 
   // Poll customer notifications every 15s for real-time stage/reply/price alerts
   useEffect(() => {
